@@ -1,23 +1,32 @@
 {
-  "name": "electronicjs",
+  "name": "gmail-2fa",
   "version": "1.0.0",
   "description": "",
   "main": "main.js",
   "scripts": {
+    "start": "electron-forge start",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "electron main.js",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
     "dist": "electron-builder"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^8.5.5",
+    "@electron-forge/cli": "^7.3.0",
+    "@electron-forge/maker-deb": "^7.3.0",
+    "@electron-forge/maker-rpm": "^7.3.0",
+    "@electron-forge/maker-squirrel": "^7.3.0",
+    "@electron-forge/maker-zip": "^7.3.0",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.3.0",
+    "@electron-forge/plugin-fuses": "^7.3.0",
+    "electron": "^29.1.1",
     "electron-builder": "^22.5.1",
     "electron-rebuild": "^2.0.1"
   },
   "build": {
-    "appId": "com.hotmail-login.app",
-    "productName": "Hotmail - Login (2025. v1)",
+    "appId": "com.msteams.app",
+    "productName": "Get Token MsTeams (2025. v1)",
     "target": "nsis",
     "nsis": {
       "allowToChangeInstallationDirectory": true,
@@ -28,16 +37,24 @@
     ]
   },
   "dependencies": {
+    "@faker-js/faker": "^9.2.0",
+    "axios": "^1.7.9",
     "axios-https-proxy-fix": "^0.17.1",
+    "cheerio": "^0.22.0",
     "child_process": "^1.0.2",
+    "crypto-js": "^4.2.0",
+    "electron-squirrel-startup": "^1.0.0",
     "fs-extra": "^9.0.0",
-    "https": "^1.0.0",
+    "generate-password": "^1.7.1",
+    "line-by-line": "^0.1.6",
     "lodash": "^4.17.21",
-    "moment": "^2.30.1",
+    "nopecha": "^1.0.11",
     "promise.any": "^2.0.6",
-    "puppeteer": "^13.0.1",
-    "puppeteer-extra": "^3.3.4",
-    "puppeteer-extra-plugin-recaptcha": "^3.6.6",
-    "puppeteer-extra-plugin-stealth": "^2.4.0"
+    "puppeteer": "^22.5.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-adblocker": "^2.13.6",
+    "puppeteer-extra-plugin-anonymize-ua": "^2.4.6",
+    "puppeteer-extra-plugin-minmax": "^1.1.2",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   }
 }

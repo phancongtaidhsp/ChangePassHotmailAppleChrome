@@ -1,47 +1,67 @@
-
 .title-app {
   text-align: center;
   color: #F95B0B;
 }
-.note{
+
+.note {
   text-align: center;
 }
+
 .mr {
   margin-bottom: 20px;
 }
-.step{
-  font-size: 30px;
+
+.success {
+  font-size: 18px;
   color: #015c24;
 }
-.total{
-  font-size: 30px;
+
+.fail {
+  font-size: 18px;
+  color: #e22504;
+}
+
+.total {
+  font-size: 18px;
   color: #F95B0B;
 }
-.current{
-  font-size: 30px;
+
+.tocheck {
+  font-size: 18px;
   color: #609BEB;
 }
-.wr{
+
+.wr {
   margin: 0 30px 30px 30px;
 }
-.value{
+
+.value {
   margin-top: 30px;
   margin-left: 20px;
 }
-.button{
+
+.button {
   margin: 0 20px 20px 20px;
 }
-.hidden{
+
+.hidden {
   visibility: hidden;
 }
-.info{
+
+.info {
   margin-left: 20px;
 }
+
 .textarea {
   margin-left: 10px;
   margin-bottom: 10px;
   resize: none;
 }
+
 #start {
   margin-left: 10px;
+}
+
+input {
+  width: 350px;
 }
