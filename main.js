@@ -10,7 +10,7 @@ const AdblockerPlugin = require("puppeteer-extra-plugin-adblocker");
 puppeteer.use(AnonymizeUAPlugin());
 puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
-const { splitArrayIntoChunks, delay } = require('./helper');
+const { splitArrayIntoChunks, delay, rentPhoneDaisySMS } = require('./helper');
 const Action = require('./Action');
 
 let flagPause = false;
@@ -18,6 +18,13 @@ let win;
 let interval;
 let currentIndex = 0;
 let numberOfThread = 4;
+let phoneObject = {
+  "0": {
+    "idDaisySMS": "1234567890",
+    "phoneDaisySMS": "84394090909",
+    "codes": [],
+  },
+};
 
 function createWindow() {
   // Create the browser window.
@@ -45,7 +52,7 @@ app.on('window-all-closed', () => {
   }
 })
 
-const run = async function (thread, mailInfo) {
+const run = async function (thread, mailInfo, daisySMSApiKey) {
   let outsuccess = `${__dirname}\\..\\extraResources\\MsTeams\\success.txt`;
   let outfail = `${__dirname}\\..\\extraResources\\MsTeams\\mailexist.txt`;
   let position = {
@@ -112,21 +119,30 @@ const run = async function (thread, mailInfo) {
       '--ignore-certifcate-errors-spki-list',
     ],
   });
-  let context = await browser.createBrowserContext();
-  let page = await context.newPage();
-  const [mail, pass] = mailInfo.split("|");
-  let resultAction = await Action(page, [mail, pass]);
-  if (resultAction) {
-    fs.appendFileSync(outsuccess, `${mail}:${pass}:${resultAction}\n`);
-  } else {
-    fs.appendFileSync(outfail, `${mail}:${pass}\n`);
-  }
   try {
+    let context = await browser.createBrowserContext();
+    let page = await context.newPage();
+    let phoneDaisySMS = phoneObject[thread]?.phoneDaisySMS;
+    let idDaisySMS = phoneObject[thread]?.idDaisySMS;
+    let codes = phoneObject[thread]?.codes || [];
+    if (!phoneDaisySMS || codes.length >= 5) {
+      ({ idDaisySMS, phoneDaisySMS } = await rentPhoneDaisySMS(daisySMSApiKey));
+      phoneObject[thread] = { idDaisySMS, phoneDaisySMS };
+    }
+    const [mailHotmail, passHotmail] = mailInfo.split("|");
+    let resultAction = await Action(context, page, [mailHotmail, passHotmail, phoneObject[thread]]);
+    if (resultAction) {
+      fs.appendFileSync(outsuccess, `${mailInfo}|${resultAction}\n`);
+    } else {
+      fs.appendFileSync(outfail, `${mailInfo}\n`);
+    }
     if (browser) {
       await browser.close();
     }
   } catch (error) {
-    console.log(error);
+    if (browser) {
+      await browser.close();
+    }
   }
 }
 
@@ -136,7 +152,7 @@ function isFileExists(pathFile) {
   return false;
 }
 
-ipc.on('start', async function (event, pathFileMail, soluong) {
+ipc.on('start', async function (event, pathFileMail, soluong, daisySMSApiKey) {
   let pathFolder = `${__dirname}\\..\\extraResources\\MsTeams`;
   electron.session.defaultSession.clearCache();
   numberOfThread = Number(soluong);
@@ -175,7 +191,7 @@ ipc.on('start', async function (event, pathFileMail, soluong) {
           }
           currentIndex++;
           win.webContents.send('total', currentIndex);
-          await run(thread, mailInfo);
+          await run(thread, mailInfo, daisySMSApiKey);
         } catch (err) {
           console.log(err);
         }
@@ -223,7 +239,7 @@ ipc.on('result', function (event, pathFileMail) {
   if (!incompleteFileFail) {
     let listMailFail = fs.readFileSync(outfail, 'utf8');
     listMailFail = listMailFail.split(/\r?\n/);
-  
+
     // remove all mail fail
     for (const maildata of listMailFail) {
       let mail = maildata.split('|')?.[0];
@@ -233,7 +249,7 @@ ipc.on('result', function (event, pathFileMail) {
       }
     }
   }
-  
+
   fs.writeFileSync(pathFileMail, listMail.join('\n') + "\n", 'utf8');
   win.webContents.send('result', true);
 })

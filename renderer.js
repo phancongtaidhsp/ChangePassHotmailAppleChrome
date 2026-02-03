@@ -2,6 +2,7 @@ document.getElementById('start').addEventListener('click', function () {
   document.getElementById('thongbao').classList.add('hidden')
   let pathFileMail = document.getElementById('filepathmail').value;
   let soluong = document.getElementById('soluong').value || 0;
+  let daisySMSApiKey = document.getElementById('daisySMSApiKey').value;
   if (soluong < 1 || soluong > 10) {
     soluong = 10;
   }
@@ -11,7 +12,7 @@ document.getElementById('start').addEventListener('click', function () {
   if (pathFileMail[pathFileMail.length - 1] == '"') {
     pathFileMail = pathFileMail.substring(0, pathFileMail.length - 1)
   }
-  window.electronAPI.start(pathFileMail, soluong);
+  window.electronAPI.start(pathFileMail, soluong, daisySMSApiKey);
 });
 
 document.getElementById('pause').addEventListener('click', function () {
