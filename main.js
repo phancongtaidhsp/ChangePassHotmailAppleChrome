@@ -49,7 +49,7 @@ app.on('window-all-closed', () => {
 
 const run = async function (thread, mailInfo, listProxy) {
   let outsuccess = `${__dirname}\\..\\extraResources\\BackHotmailNoPhone\\success.txt`;
-  let outfail = `${__dirname}\\..\\extraResources\\BackHotmailNoPhone\\mailexist.txt`;
+  let outfail = `${__dirname}\\..\\extraResources\\BackHotmailNoPhone\\fail.txt`;
   let position = {
     x: 0,
     y: 0
@@ -135,6 +135,7 @@ const run = async function (thread, mailInfo, listProxy) {
       await browser.close();
     }
   } catch (error) {
+    win.webContents.send('tocheck', 1);
     console.log(error);
     if (browser) {
       await browser.close();
@@ -227,7 +228,7 @@ ipc.on('result', function (event, pathFileMail) {
     // remove all mail success
     for (const maildata of listMailSuccess) {
       let mail = maildata.split('|')?.[0];
-      let indexMail = listMail.findIndex(m => m == mail);
+      let indexMail = listMail.findIndex(m => m.includes(mail));
       if (indexMail >= 0) {
         listMail = [...listMail.slice(0, indexMail), ...listMail.slice(indexMail + 1)];
       }
@@ -241,7 +242,7 @@ ipc.on('result', function (event, pathFileMail) {
     // remove all mail fail
     for (const maildata of listMailFail) {
       let mail = maildata.split('|')?.[0];
-      let indexMail = listMail.findIndex(m => m == mail);
+      let indexMail = listMail.findIndex(m => m.includes(mail));
       if (indexMail >= 0) {
         listMail = [...listMail.slice(0, indexMail), ...listMail.slice(indexMail + 1)];
       }
