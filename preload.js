@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron/renderer')
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  start: (pathFileMail, soluong, daisySMSApiKey) => ipcRenderer.send('start', pathFileMail, soluong, daisySMSApiKey),
+  start: (pathFileMail, pathFileProxy, soluong) => ipcRenderer.send('start', pathFileMail, pathFileProxy, soluong),
   pause: () => ipcRenderer.send('pause'),
   result: (pathFileMail) => ipcRenderer.send('result', pathFileMail)
 })

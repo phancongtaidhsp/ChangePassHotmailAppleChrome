@@ -10,21 +10,16 @@ const AdblockerPlugin = require("puppeteer-extra-plugin-adblocker");
 puppeteer.use(AnonymizeUAPlugin());
 puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
-const { splitArrayIntoChunks, delay, rentPhoneDaisySMS } = require('./helper');
+const { splitArrayIntoChunks, delay } = require('./helper');
 const Action = require('./Action');
+const { sampleSize } = require('lodash');
 
 let flagPause = false;
 let win;
 let interval;
 let currentIndex = 0;
 let numberOfThread = 4;
-let phoneObject = {
-  "0": {
-    "idDaisySMS": "1234567890",
-    "phoneDaisySMS": "84394090909",
-    "codes": [],
-  },
-};
+
 
 function createWindow() {
   // Create the browser window.
@@ -52,9 +47,9 @@ app.on('window-all-closed', () => {
   }
 })
 
-const run = async function (thread, mailInfo, daisySMSApiKey) {
-  let outsuccess = `${__dirname}\\..\\extraResources\\MsTeams\\success.txt`;
-  let outfail = `${__dirname}\\..\\extraResources\\MsTeams\\mailexist.txt`;
+const run = async function (thread, mailInfo, listProxy) {
+  let outsuccess = `${__dirname}\\..\\extraResources\\BackHotmailNoPhone\\success.txt`;
+  let outfail = `${__dirname}\\..\\extraResources\\BackHotmailNoPhone\\mailexist.txt`;
   let position = {
     x: 0,
     y: 0
@@ -106,9 +101,12 @@ const run = async function (thread, mailInfo, daisySMSApiKey) {
     }
   }
   await delay((thread + 1) * 100);
+  let proxySample = sampleSize(listProxy, 1)?.[0];
+  let proxyArr = proxySample.split(":");
+  
   let browser = await puppeteer.launch({
-    // executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    // executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     headless: false,
     ignoreHTTPSErrors: true,
     ignoreDefaultArgs: ['--enable-automation'],
@@ -117,29 +115,27 @@ const run = async function (thread, mailInfo, daisySMSApiKey) {
       '--disk-cache-size=0',
       '--ignore-certifcate-errors',
       '--ignore-certifcate-errors-spki-list',
+      `--proxy-server=${proxyArr.slice(0, 2).join(':')}`
     ],
   });
   try {
     let context = await browser.createBrowserContext();
     let page = await context.newPage();
-    let phoneDaisySMS = phoneObject[thread]?.phoneDaisySMS;
-    let idDaisySMS = phoneObject[thread]?.idDaisySMS;
-    let codes = phoneObject[thread]?.codes || [];
-    if (!phoneDaisySMS || codes.length >= 5) {
-      ({ idDaisySMS, phoneDaisySMS } = await rentPhoneDaisySMS(daisySMSApiKey));
-      phoneObject[thread] = { idDaisySMS, phoneDaisySMS };
-    }
     const [mailHotmail, passHotmail] = mailInfo.split("|");
-    let resultAction = await Action(context, page, [mailHotmail, passHotmail, phoneObject[thread]]);
-    if (resultAction) {
-      fs.appendFileSync(outsuccess, `${mailInfo}|${resultAction}\n`);
+    const mailTemp = mailHotmail.split("@")[0] + "55678" + "@smvmail.com";
+    let resultAction = await Action(browser, context, page, [mailHotmail, passHotmail, mailTemp]);
+    if (resultAction == "done") {
+      fs.appendFileSync(outsuccess, `${mailInfo}\n`);
+      win.webContents.send('success', 1);
     } else {
       fs.appendFileSync(outfail, `${mailInfo}\n`);
+      win.webContents.send('fail', 1);
     }
     if (browser) {
       await browser.close();
     }
   } catch (error) {
+    console.log(error);
     if (browser) {
       await browser.close();
     }
@@ -152,8 +148,8 @@ function isFileExists(pathFile) {
   return false;
 }
 
-ipc.on('start', async function (event, pathFileMail, soluong, daisySMSApiKey) {
-  let pathFolder = `${__dirname}\\..\\extraResources\\MsTeams`;
+ipc.on('start', async function (event, pathFileMail, pathFileProxy, soluong) {
+  let pathFolder = `${__dirname}\\..\\extraResources\\BackHotmailNoPhone`;
   electron.session.defaultSession.clearCache();
   numberOfThread = Number(soluong);
   let incompleteFolder = isFileExists(pathFolder);
@@ -162,15 +158,17 @@ ipc.on('start', async function (event, pathFileMail, soluong, daisySMSApiKey) {
     incompleteFolder = isFileExists(pathFolder);
   }
   let incompleteFile1 = isFileExists(pathFileMail);
-  if (incompleteFolder || incompleteFile1) {
-    win.webContents.send('checkfiles', incompleteFolder || incompleteFile1);
+  let incompleteFile2 = isFileExists(pathFileProxy);
+  if (incompleteFolder || incompleteFile1 || incompleteFile2) {
+    win.webContents.send('checkfiles', incompleteFolder || incompleteFile1 || incompleteFile2);
     return;
   }
   win.webContents.send('disable', true);
   flagPause = false;
   let listMailPass = fs.readFileSync(pathFileMail, 'utf8');
   listMailPass = listMailPass.split(/\r?\n/);
-
+  let listProxy = fs.readFileSync(pathFileProxy, 'utf8');
+  listProxy = listProxy.split(/\r?\n/);
   let startTime = 0;
   interval = setInterval(() => {
     startTime++;
@@ -191,7 +189,7 @@ ipc.on('start', async function (event, pathFileMail, soluong, daisySMSApiKey) {
           }
           currentIndex++;
           win.webContents.send('total', currentIndex);
-          await run(thread, mailInfo, daisySMSApiKey);
+          await run(thread, mailInfo, listProxy);
         } catch (err) {
           console.log(err);
         }
@@ -212,8 +210,8 @@ ipc.on('pause', async function (event) {
 })
 
 ipc.on('result', function (event, pathFileMail) {
-  let outsuccess = `${__dirname}\\..\\extraResources\\MsTeams\\success.txt`;
-  let outfail = `${__dirname}\\..\\extraResources\\MsTeams\\fail.txt`;
+  let outsuccess = `${__dirname}\\..\\extraResources\\BackHotmailNoPhone\\success.txt`;
+  let outfail = `${__dirname}\\..\\extraResources\\BackHotmailNoPhone\\fail.txt`;
   let incompleteFile1 = isFileExists(pathFileMail);
   let incompleteFileSuccess = isFileExists(outsuccess);
   let incompleteFileFail = isFileExists(outfail);
