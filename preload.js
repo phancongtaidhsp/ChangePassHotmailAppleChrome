@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron/renderer')
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  start: (pathFileMail, pathFileProxy, soluong) => ipcRenderer.send('start', pathFileMail, pathFileProxy, soluong),
+  start: (pathFileMail, pathFileProxyHotmail, pathFileProxyApple, soluong) => ipcRenderer.send('start', pathFileMail, pathFileProxyHotmail, pathFileProxyApple, soluong),
   pause: () => ipcRenderer.send('pause'),
   result: (pathFileMail) => ipcRenderer.send('result', pathFileMail)
 })

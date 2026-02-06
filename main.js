@@ -47,9 +47,9 @@ app.on('window-all-closed', () => {
   }
 })
 
-const run = async function (thread, mailInfo, listProxy) {
-  let outsuccess = `${__dirname}\\..\\extraResources\\BackHotmailNoPhone\\success.txt`;
-  let outfail = `${__dirname}\\..\\extraResources\\BackHotmailNoPhone\\fail.txt`;
+const run = async function (thread, mailInfo, listProxyHotmail, listProxyApple) {
+  let outsuccess = `${__dirname}\\..\\extraResources\\ChangePassHotmailAppleChrome\\success.txt`;
+  let outfail = `${__dirname}\\..\\extraResources\\ChangePassHotmailAppleChrome\\fail.txt`;
   let position = {
     x: 0,
     y: 0
@@ -101,7 +101,7 @@ const run = async function (thread, mailInfo, listProxy) {
     }
   }
   await delay((thread + 1) * 100);
-  let proxySample = sampleSize(listProxy, 1)?.[0];
+  let proxySample = sampleSize(listProxyHotmail, 1)?.[0];
   let proxyArr = proxySample.split(":");
   
   let browser = await puppeteer.launch({
@@ -122,13 +122,12 @@ const run = async function (thread, mailInfo, listProxy) {
     let context = await browser.createBrowserContext();
     let page = await context.newPage();
     const [mailHotmail, passHotmail] = mailInfo.split("|");
-    const mailTemp = mailHotmail.split("@")[0] + "55678" + "@smvmail.com";
-    let resultAction = await Action(browser, context, page, [mailHotmail, passHotmail, mailTemp]);
-    if (resultAction == "done") {
-      fs.appendFileSync(outsuccess, `${mailInfo}\n`);
+    let [passwd, status] = await Action(page, [mailHotmail, passHotmail, listProxyApple]);
+    if (status == "pass") {
+      fs.appendFileSync(outsuccess, `${mailInfo}|${passwd}\n`);
       win.webContents.send('success', 1);
     } else {
-      fs.appendFileSync(outfail, `${mailInfo}\n`);
+      fs.appendFileSync(outfail, `${mailInfo}|${status || 'fail step 3'}\n`);
       win.webContents.send('fail', 1);
     }
     if (browser) {
@@ -149,8 +148,8 @@ function isFileExists(pathFile) {
   return false;
 }
 
-ipc.on('start', async function (event, pathFileMail, pathFileProxy, soluong) {
-  let pathFolder = `${__dirname}\\..\\extraResources\\BackHotmailNoPhone`;
+ipc.on('start', async function (event, pathFileMail, pathFileProxyHotmail, pathFileProxyApple, soluong) {
+  let pathFolder = `${__dirname}\\..\\extraResources\\ChangePassHotmailAppleChrome`;
   electron.session.defaultSession.clearCache();
   numberOfThread = Number(soluong);
   let incompleteFolder = isFileExists(pathFolder);
@@ -159,8 +158,9 @@ ipc.on('start', async function (event, pathFileMail, pathFileProxy, soluong) {
     incompleteFolder = isFileExists(pathFolder);
   }
   let incompleteFile1 = isFileExists(pathFileMail);
-  let incompleteFile2 = isFileExists(pathFileProxy);
-  if (incompleteFolder || incompleteFile1 || incompleteFile2) {
+  let incompleteFile2 = isFileExists(pathFileProxyHotmail);
+  let incompleteFile3 = isFileExists(pathFileProxyApple);
+  if (incompleteFolder || incompleteFile1 || incompleteFile2 || incompleteFile3) {
     win.webContents.send('checkfiles', incompleteFolder || incompleteFile1 || incompleteFile2);
     return;
   }
@@ -168,8 +168,10 @@ ipc.on('start', async function (event, pathFileMail, pathFileProxy, soluong) {
   flagPause = false;
   let listMailPass = fs.readFileSync(pathFileMail, 'utf8');
   listMailPass = listMailPass.split(/\r?\n/);
-  let listProxy = fs.readFileSync(pathFileProxy, 'utf8');
-  listProxy = listProxy.split(/\r?\n/);
+  let listProxyHotmail = fs.readFileSync(pathFileProxyHotmail, 'utf8');
+  listProxyHotmail = listProxyHotmail.split(/\r?\n/);
+  let listProxyApple = fs.readFileSync(pathFileProxyApple, 'utf8');
+  listProxyApple = listProxyApple.split(/\r?\n/);
   let startTime = 0;
   interval = setInterval(() => {
     startTime++;
@@ -190,7 +192,7 @@ ipc.on('start', async function (event, pathFileMail, pathFileProxy, soluong) {
           }
           currentIndex++;
           win.webContents.send('total', currentIndex);
-          await run(thread, mailInfo, listProxy);
+          await run(thread, mailInfo, listProxyHotmail, listProxyApple);
         } catch (err) {
           console.log(err);
         }
@@ -210,23 +212,38 @@ ipc.on('pause', async function (event) {
   win.webContents.send('pause', "Đang tạm dừng...Vui lòng chờ...", true);
 })
 
-ipc.on('result', function (event, pathFileMail) {
-  let outsuccess = `${__dirname}\\..\\extraResources\\BackHotmailNoPhone\\success.txt`;
-  let outfail = `${__dirname}\\..\\extraResources\\BackHotmailNoPhone\\fail.txt`;
+const xuatKetQua = (pathFileMail) => {
+  let outsuccess = `${__dirname}\\..\\extraResources\\ChangePassHotmailAppleChrome\\success.txt`;
+  let outfail = `${__dirname}\\..\\extraResources\\ChangePassHotmailAppleChrome\\fail.txt`;
   let incompleteFile1 = isFileExists(pathFileMail);
-  let incompleteFileSuccess = isFileExists(outsuccess);
-  let incompleteFileFail = isFileExists(outfail);
   if (incompleteFile1) {
     win.webContents.send('checkfiles', incompleteFile1);
     return;
   }
   let listMail = fs.readFileSync(pathFileMail, 'utf8');
   listMail = listMail.split(/\r?\n/);
-  if (!incompleteFileSuccess) {
-    let listMailSuccess = fs.readFileSync(outsuccess, 'utf8');
-    listMailSuccess = listMailSuccess.split(/\r?\n/);
-    // remove all mail success
-    for (const maildata of listMailSuccess) {
+  let listMailSuccess = fs.readFileSync(outsuccess, 'utf8');
+  listMailSuccess = listMailSuccess.split(/\r?\n/);
+  let listMailFail = fs.readFileSync(outfail, 'utf8');
+  listMailFail = listMailFail.split(/\r?\n/);
+  // remove all mail success
+  for (const maildata of listMailSuccess) {
+    let mail = maildata.split('|')?.[0];
+    let indexMail = listMail.findIndex(m => m.includes(mail));
+    if (indexMail >= 0) {
+      listMail = [...listMail.slice(0, indexMail), ...listMail.slice(indexMail + 1)];
+    }
+  }
+  let newListMailFail = [...listMailFail];
+  for (const maildata of listMailFail) {
+    if (maildata.includes("khong ve mail") || maildata.includes("fail step 3") || maildata.includes("fail send mail") || maildata.includes("recaptcha")) {
+      // remove fail in fail file
+      let indexMail = newListMailFail.findIndex(m => m == maildata);
+      if (indexMail >= 0) {
+        newListMailFail = [...newListMailFail.slice(0, indexMail), ...newListMailFail.slice(indexMail + 1)];
+      }
+    } else {
+      // remove fail in input file
       let mail = maildata.split('|')?.[0];
       let indexMail = listMail.findIndex(m => m.includes(mail));
       if (indexMail >= 0) {
@@ -234,21 +251,11 @@ ipc.on('result', function (event, pathFileMail) {
       }
     }
   }
+  fs.writeFileSync(pathFileMail, listMail.join('\n'), 'utf8');
+  fs.writeFileSync(outfail, newListMailFail.join('\n'), 'utf8');
+}
 
-  if (!incompleteFileFail) {
-    let listMailFail = fs.readFileSync(outfail, 'utf8');
-    listMailFail = listMailFail.split(/\r?\n/);
-
-    // remove all mail fail
-    for (const maildata of listMailFail) {
-      let mail = maildata.split('|')?.[0];
-      let indexMail = listMail.findIndex(m => m.includes(mail));
-      if (indexMail >= 0) {
-        listMail = [...listMail.slice(0, indexMail), ...listMail.slice(indexMail + 1)];
-      }
-    }
-  }
-
-  fs.writeFileSync(pathFileMail, listMail.join('\n') + "\n", 'utf8');
+ipc.on('result', function (event, pathFileMail) {
+  xuatKetQua(pathFileMail);
   win.webContents.send('result', true);
 })
