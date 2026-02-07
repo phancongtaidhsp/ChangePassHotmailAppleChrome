@@ -81,6 +81,7 @@ const action = async (page, record) => {
     page.waitForSelector('#iShowSkip'),
     page.waitForSelector('#acceptButton'),
     page.waitForSelector('#iTOUDesc'),
+    page.waitForSelector('#frmAddProof'),
   ])
 
   // send mail apple for change password
@@ -101,6 +102,7 @@ const action = async (page, record) => {
 
   if (sendMailRes === 'successfully') {
     console.log("sending mail thanh cong...");
+    await delay(10000);
     await page.goto('https://outlook.live.com/mail/0/', { timeout: 90000 });
 
     await promiseAny([

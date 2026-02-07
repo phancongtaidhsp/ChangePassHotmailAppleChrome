@@ -12,7 +12,7 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
 const { splitArrayIntoChunks, delay } = require('./helper');
 const Action = require('./Action');
-const { sampleSize } = require('lodash');
+const { sampleSize, includes } = require('lodash');
 
 let flagPause = false;
 let win;
@@ -220,30 +220,15 @@ const xuatKetQua = (pathFileMail) => {
     win.webContents.send('checkfiles', incompleteFile1);
     return;
   }
+  let incompleteFile2 = isFileExists(outsuccess);
+  let incompleteFile3 = isFileExists(outfail);
   let listMail = fs.readFileSync(pathFileMail, 'utf8');
   listMail = listMail.split(/\r?\n/);
-  let listMailSuccess = fs.readFileSync(outsuccess, 'utf8');
-  listMailSuccess = listMailSuccess.split(/\r?\n/);
-  let listMailFail = fs.readFileSync(outfail, 'utf8');
-  listMailFail = listMailFail.split(/\r?\n/);
-  // remove all mail success
-  for (const maildata of listMailSuccess) {
-    let mail = maildata.split('|')?.[0];
-    let indexMail = listMail.findIndex(m => m.includes(mail));
-    if (indexMail >= 0) {
-      listMail = [...listMail.slice(0, indexMail), ...listMail.slice(indexMail + 1)];
-    }
-  }
-  let newListMailFail = [...listMailFail];
-  for (const maildata of listMailFail) {
-    if (maildata.includes("khong ve mail") || maildata.includes("fail step 3") || maildata.includes("fail send mail") || maildata.includes("recaptcha")) {
-      // remove fail in fail file
-      let indexMail = newListMailFail.findIndex(m => m == maildata);
-      if (indexMail >= 0) {
-        newListMailFail = [...newListMailFail.slice(0, indexMail), ...newListMailFail.slice(indexMail + 1)];
-      }
-    } else {
-      // remove fail in input file
+  if (!incompleteFile2) {
+    let listMailSuccess = fs.readFileSync(outsuccess, 'utf8');
+    listMailSuccess = listMailSuccess.split(/\r?\n/);
+    // remove all mail success
+    for (const maildata of listMailSuccess) {
       let mail = maildata.split('|')?.[0];
       let indexMail = listMail.findIndex(m => m.includes(mail));
       if (indexMail >= 0) {
@@ -251,8 +236,29 @@ const xuatKetQua = (pathFileMail) => {
       }
     }
   }
+  if (!incompleteFile3) {
+    let listMailFail = fs.readFileSync(outfail, 'utf8');
+    listMailFail = listMailFail.split(/\r?\n/);
+    let newListMailFail = [...listMailFail];
+    for (const maildata of listMailFail) {
+      if (maildata.includes("fail step 3") || maildata.includes("recaptcha")) {
+        // remove fail in fail file
+        let indexMail = newListMailFail.findIndex(m => m == maildata);
+        if (indexMail >= 0) {
+          newListMailFail = [...newListMailFail.slice(0, indexMail), ...newListMailFail.slice(indexMail + 1)];
+        }
+      } else {
+        // remove fail in input file
+        let mail = maildata.split('|')?.[0];
+        let indexMail = listMail.findIndex(m => m.includes(mail));
+        if (indexMail >= 0) {
+          listMail = [...listMail.slice(0, indexMail), ...listMail.slice(indexMail + 1)];
+        }
+      }
+    }
+    fs.writeFileSync(outfail, newListMailFail.join('\n'), 'utf8');
+  }
   fs.writeFileSync(pathFileMail, listMail.join('\n'), 'utf8');
-  fs.writeFileSync(outfail, newListMailFail.join('\n'), 'utf8');
 }
 
 ipc.on('result', function (event, pathFileMail) {
