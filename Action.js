@@ -132,12 +132,47 @@ const action = async (page, record) => {
 
     await delay(2000);
 
-    await page.evaluate(() => {
+    const hasAppleMail = await page.evaluate(() => {
       const titleAppleEl = document.querySelector('#MailList .customScrollBar div[role="option"] span[title="appleid@id.apple.com"]');
       if (titleAppleEl) {
-        titleAppleEl.click();
+        const timeEl = titleAppleEl.parentElement?.parentElement?.parentElement?.querySelector('span:nth-child(2)');
+        if (timeEl && timeEl.textContent) {
+          const timeWithoutDateReg = /^(\d{1,2}):(\d{1,2}) (AM|PM)$/i;
+          if (timeWithoutDateReg.test(timeEl.textContent)) {
+            titleAppleEl.click();
+            return true;
+          }
+        }
       }
+      return false;
     });
+
+    // go to other tab
+    if (!hasAppleMail) {
+      // click button other tab
+      await page.click('div[data-app-section="MessageList"] div[role="tablist"] button[role="tab"]:nth-child(2)');
+      
+      await delay(10000);
+      
+      const hasOtherMail = await page.evaluate(() => {
+        const otherTabEl = document.querySelector('#MailList .customScrollBar div[role="option"] span[title="appleid@id.apple.com"]');
+        if (otherTabEl) {
+          const timeEl = otherTabEl?.parentElement?.parentElement?.parentElement?.querySelector('span:nth-child(2)');
+          if (timeEl && timeEl.textContent) {
+            const timeWithoutDateReg = /^(\d{1,2}):(\d{1,2}) (AM|PM)$/i;
+            if (timeWithoutDateReg.test(timeEl.textContent)) {
+              otherTabEl.click();
+              return true;
+            }
+          }
+        }
+        return false;
+      });
+
+      if (!hasOtherMail) {
+        return Promise.resolve(['', "khong ve mail"]);
+      }
+    }
 
     await page.waitForSelector('#ReadingPaneContainerId .x_container a[role="link"]', { timeout: 90000 });
     await delay(2000);
